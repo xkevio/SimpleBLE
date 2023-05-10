@@ -232,8 +232,11 @@ pub struct Adapter {
 pub struct Peripheral {
     internal: cxx::UniquePtr<ffi::RustyPeripheral>,
 
-    on_connected: Box<dyn Fn() + Send + Sync + 'static>,
-    on_disconnected: Box<dyn Fn() + Send + Sync + 'static>,
+    on_cn: fn(&mut Self),
+    on_dc: fn(&mut Self),
+
+    // on_connected: Box<dyn Fn() + Send + Sync + 'static>,
+    // on_disconnected: Box<dyn Fn() + Send + Sync + 'static>,
 
     on_characteristic_update_map: HashMap<String, Box<dyn Fn(Vec<u8>) + Send + Sync + 'static>>,
 }
@@ -397,8 +400,12 @@ impl Peripheral {
     fn new(wrapper: &mut ffi::RustyPeripheralWrapper) -> Pin<Box<Self>> {
         let this = Self {
             internal: cxx::UniquePtr::<ffi::RustyPeripheral>::null(),
-            on_connected: Box::new(|| {}),
-            on_disconnected: Box::new(|| {}),
+            
+            on_cn: |_| {},
+            on_dc: |_| {},
+
+            // on_connected: Box::new(|| {}),
+            // on_disconnected: Box::new(|| {}),
             on_characteristic_update_map: HashMap::new(),
         };
 
@@ -627,20 +634,20 @@ impl Peripheral {
             })
     }
 
-    pub fn set_callback_on_connected(&mut self, cb: Box<dyn Fn() + Send + Sync + 'static>) {
-        self.on_connected = cb;
+    pub fn set_callback_on_connected(&mut self, cb: fn(&mut Peripheral)) {
+        self.on_cn = cb;
     }
 
-    pub fn set_callback_on_disconnected(&mut self, cb: Box<dyn Fn() + Send + Sync + 'static>) {
-        self.on_disconnected = cb;
+    pub fn set_callback_on_disconnected(&mut self, cb: fn(&mut Peripheral)) {
+        self.on_dc = cb;
     }
 
-    fn on_callback_connected(&self) {
-        (self.on_connected)();
+    fn on_callback_connected(&mut self) {
+        (self.on_cn)(self);
     }
 
-    fn on_callback_disconnected(&self) {
-        (self.on_disconnected)();
+    fn on_callback_disconnected(&mut self) {
+        (self.on_dc)(self);
     }
 
     fn on_callback_characteristic_updated(
