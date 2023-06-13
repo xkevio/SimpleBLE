@@ -232,8 +232,8 @@ pub struct Adapter {
 pub struct Peripheral {
     internal: cxx::UniquePtr<ffi::RustyPeripheral>,
 
-    on_cn: fn(&mut Self),
-    on_dc: fn(&mut Self),
+    on_cn: Option<fn(&mut Self)>,
+    on_dc: Option<fn(&mut Self)>,
 
     // on_connected: Box<dyn Fn() + Send + Sync + 'static>,
     // on_disconnected: Box<dyn Fn() + Send + Sync + 'static>,
@@ -401,8 +401,8 @@ impl Peripheral {
         let this = Self {
             internal: cxx::UniquePtr::<ffi::RustyPeripheral>::null(),
             
-            on_cn: |_| {},
-            on_dc: |_| {},
+            on_cn: None,
+            on_dc: None,
 
             // on_connected: Box::new(|| {}),
             // on_disconnected: Box::new(|| {}),
@@ -634,20 +634,24 @@ impl Peripheral {
             })
     }
 
-    pub fn set_callback_on_connected(&mut self, cb: fn(&mut Peripheral)) {
+    pub fn set_callback_on_connected(&mut self, cb: Option<fn(&mut Peripheral)>) {
         self.on_cn = cb;
     }
 
-    pub fn set_callback_on_disconnected(&mut self, cb: fn(&mut Peripheral)) {
+    pub fn set_callback_on_disconnected(&mut self, cb: Option<fn(&mut Peripheral)>) {
         self.on_dc = cb;
     }
 
     fn on_callback_connected(&mut self) {
-        (self.on_cn)(self);
+        if let Some(on_cn) = self.on_cn {
+            (on_cn)(self);
+        }
     }
 
     fn on_callback_disconnected(&mut self) {
-        (self.on_dc)(self);
+        if let Some(on_dc) = self.on_dc {
+            (on_dc)(self);
+        }
     }
 
     fn on_callback_characteristic_updated(
